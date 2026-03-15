@@ -1,0 +1,4 @@
+# Fix for Prisma generator path
+generator client {
+  provider = "prisma-client-js"
+}
