@@ -54,7 +54,7 @@ export async function generateSanepidReport(data: SanepidReportData): Promise<Bu
   const { width, height } = page.getSize();
 
   // Rysowanie nagłówka
-  drawHeader(page, width, data);
+  drawHeader(page, width, height, data);
 
   // Rysowanie tabeli
   drawTable(page, width, height, data.processes, pdfDoc);
@@ -71,39 +71,35 @@ export async function generateSanepidReport(data: SanepidReportData): Promise<Bu
 /**
  * Rysuje nagłówek raportu
  */
-function drawHeader(page: any, width: number, data: SanepidReportData) {
+function drawHeader(page: any, width: number, pageHeight: number, data: SanepidReportData) {
   const title = 'Dziennik kontroli procesów sterylizacji';
   const subtitle = `Zakres: ${data.dateRange.from} do ${data.dateRange.to}`;
 
   page.drawText(title, {
     x: 50,
-    y: height - 50,
+    y: pageHeight - 50,
     size: 18,
-    font: null,
     color: rgb(0, 0, 0)
   });
 
   page.drawText(subtitle, {
     x: 50,
-    y: height - 75,
+    y: pageHeight - 75,
     size: 12,
-    font: null,
     color: rgb(0.3, 0.3, 0.3)
   });
 
   page.drawText(`Nazwa zakładu: ${data.facilityName}`, {
     x: 50,
-    y: height - 100,
+    y: pageHeight - 100,
     size: 10,
-    font: null,
     color: rgb(0, 0, 0)
   });
 
   page.drawText(`Adres: ${data.facilityAddress}`, {
     x: 50,
-    y: height - 115,
+    y: pageHeight - 115,
     size: 10,
-    font: null,
     color: rgb(0, 0, 0)
   });
 }
@@ -127,9 +123,7 @@ function drawTable(page: any, width: number, height: number, processes: ProcessR
       x: currentX,
       y: startY,
       size: 10,
-      font: null,
-      color: rgb(0, 0, 0),
-      bold: true
+      color: rgb(0, 0, 0)
     });
     currentX += colWidths[i];
   });
@@ -163,7 +157,6 @@ function drawTable(page: any, width: number, height: number, processes: ProcessR
         x: currentX,
         y: currentY,
         size: 9,
-        font: null,
         color: rgb(0, 0, 0)
       });
       currentX += colWidths[i];
@@ -183,7 +176,6 @@ function drawFooter(page: any, width: number, height: number) {
     x: 50,
     y: footerY,
     size: 8,
-    font: null,
     color: rgb(0.5, 0.5, 0.5)
   });
 
@@ -191,7 +183,6 @@ function drawFooter(page: any, width: number, height: number) {
     x: width - 250,
     y: footerY,
     size: 8,
-    font: null,
     color: rgb(0.5, 0.5, 0.5)
   });
 }

@@ -7,7 +7,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -17,7 +17,7 @@ model User {
   firstName     String
   lastName      String
   email         String    @unique
-  role          UserRole  @default(STYLIST)
+  role          String    @default("STYLIST") // STYLIST | SUPERVISOR | ADMIN
   certification String?   // Numer certyfikatu szkolenia
   expiryDate    DateTime? // Data wygaśnięcia certyfikatu
   createdAt     DateTime  @default(now())
@@ -26,46 +26,46 @@ model User {
   // Relacje
   processes       SterilizationProcess[]
   chemicalTests   ChemicalIndicator[]
-  biologicalTests BiologicalTest[]
+  auditLogs       AuditLog[]
 
   @@map("users")
 }
 
 // Model procesu sterylizacji
 model SterilizationProcess {
-  id                   String         @id @default(uuid())
-  cycleNumber          Int            @unique @map("cycle_number")
-  startTime            DateTime       @map("start_time")
-  endTime              DateTime?      @map("end_time")
-  status               ProcessStatus  @default(DRAFT)
-  operatorId           String         @map("operator_id")
-  biologicalTestId     String?        @map("biological_test_id")
-  physicalParameters   Json           @map("physical_parameters") // { temperature, pressure, time }
-  notes                String?        @map("notes")
-  sealedAt             DateTime?      @map("sealed_at")
-  sealHash             String?        @map("seal_hash")
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  id                   String    @id @default(uuid())
+  cycleNumber          Int       @unique @map("cycle_number")
+  startTime            DateTime  @map("start_time")
+  endTime              DateTime? @map("end_time")
+  status               String    @default("DRAFT") // DRAFT | INITIAL_DISINFECTING | PREPARING | PACKAGING | STERILIZING | VERIFYING | COMPLETED | SEALED | CANCELLED
+  operatorId           String    @map("operator_id")
+  biologicalTestId     String?   @map("biological_test_id")
+  physicalParameters   String    @map("physical_parameters") // JSON string: { temperature, pressure, time }
+  notes                String?   @map("notes")
+  sealedAt             DateTime? @map("sealed_at")
+  sealHash             String?   @map("seal_hash")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   // Relacje
-  operator      User           @relation(fields: [operatorId], references: [id])
-  toolPackages  ToolPackage[]
+  operator           User              @relation(fields: [operatorId], references: [id])
+  toolPackages       ToolPackage[]
   chemicalIndicators ChemicalIndicator[]
-  biologicalTest BiologicalTest? @relation(fields: [biologicalTestId], references: [id])
+  biologicalTest     BiologicalTest?   @relation(fields: [biologicalTestId], references: [id])
 
   @@map("sterilization_processes")
 }
 
 // Model pakietu narzędzi
 model ToolPackage {
-  id              String         @id @default(uuid())
-  processId       String         @map("process_id")
-  description     String         // np. "cążki do manicure"
-  count           Int            @default(1) // liczba pakietów
-  riskCategory    RiskCategory   @default(LOW)
-  serialNumber    String         @unique @map("serial_number")
-  expiryDate      DateTime       @map("expiry_date")
-  createdAt       DateTime       @default(now())
+  id              String    @id @default(uuid())
+  processId       String    @map("process_id")
+  description     String    // np. "cążki do manicure"
+  count           Int       @default(1) // liczba pakietów
+  riskCategory    String    @default("LOW") // LOW | MEDIUM | HIGH
+  serialNumber    String    @unique @map("serial_number")
+  expiryDate      DateTime  @map("expiry_date")
+  createdAt       DateTime  @default(now())
 
   // Relacje
   process SterilizationProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
@@ -75,34 +75,36 @@ model ToolPackage {
 
 // Model wskaźnika chemicznego
 model ChemicalIndicator {
-  id           String      @id @default(uuid())
-  processId    String      @map("process_id")
-  type         String      // Typ IV/V
-  result       TestResult  // PASS/FAIL
-  photoUrl     String?     @map("photo_url") // zdjęcie dowodowe paska
-  position     String?     // Pozycja w autoklawie
-  createdAt    DateTime    @default(now())
+  id           String    @id @default(uuid())
+  processId    String    @map("process_id")
+  operatorId   String?   @map("operator_id")
+  type         String    // Typ IV/V
+  result       String    // PASS | FAIL
+  photoUrl     String?   @map("photo_url") // zdjęcie dowodowe paska
+  position     String?   // Pozycja w autoklawie
+  createdAt    DateTime  @default(now())
 
   // Relacje
-  process SterilizationProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
+  process  SterilizationProcess @relation(fields: [processId], references: [id], onDelete: Cascade)
+  operator User?               @relation(fields: [operatorId], references: [id])
 
   @@map("chemical_indicators")
 }
 
 // Model testu biologicznego
 model BiologicalTest {
-  id           String      @id @default(uuid())
-  testDate     DateTime    @map("test_date")
-  testType     String      // np. "Sporal A"
-  result       TestResult  // PASS/FAIL
-  laboratory   String?     // Laboratorium przeprowadzające test
-  reportUrl    String?     @map("report_url") // Protokół z laboratorium
-  nextTestDate DateTime    @map("next_test_date") // Data kolejnego testu
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id           String    @id @default(uuid())
+  testDate     DateTime  @map("test_date")
+  testType     String    // np. "Sporal A"
+  result       String    // PASS | FAIL
+  laboratory   String?   // Laboratorium przeprowadzające test
+  reportUrl    String?   @map("report_url") // Protokół z laboratorium
+  nextTestDate DateTime  @map("next_test_date") // Data kolejnego testu
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  // Relacje
-  process SterilizationProcess? @relation(fields: [processId], references: [id])
+  // Reverse relation - SterilizationProcess has biologicalTestId -> BiologicalTest
+  processes SterilizationProcess[]
 
   @@map("biological_tests")
 }
@@ -114,8 +116,8 @@ model AuditLog {
   model       String    // nazwa modelu
   modelId     String    @map("model_id")
   userId      String    @map("user_id")
-  oldValue    Json?     @map("old_value")
-  newValue    Json?     @map("new_value")
+  oldValue    String?   @map("old_value")  // JSON string
+  newValue    String?   @map("new_value")  // JSON string
   ipAddresses String?   @map("ip_address")
   userAgent   String?   @map("user_agent")
   createdAt   DateTime  @default(now())
@@ -128,43 +130,13 @@ model AuditLog {
 
 // Model przypomnienia/kontrolki
 model Reminder {
-  id           String     @id @default(uuid())
-  type         String     // np. "biological_test", "autoclave_service"
+  id           String    @id @default(uuid())
+  type         String    // np. "biological_test", "autoclave_service"
   message      String
-  dueDate      DateTime   @map("due_date")
-  completed    Boolean    @default(false)
-  completedAt  DateTime?  @map("completed_at")
-  createdAt    DateTime   @default(now())
+  dueDate      DateTime  @map("due_date")
+  completed    Boolean   @default(false)
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now())
 
   @@map("reminders")
-}
-
-// Wymienione enumy
-enum UserRole {
-  STYLIST
-  SUPERVISOR
-  ADMIN
-}
-
-enum ProcessStatus {
-  DRAFT
-  INITIAL_DISINFECTING
-  PREPARING
-  PACKAGING
-  STERILIZING
-  VERIFYING
-  COMPLETED
-  SEALED
-  CANCELLED
-}
-
-enum RiskCategory {
-  LOW
-  MEDIUM
-  HIGH
-}
-
-enum TestResult {
-  PASS
-  FAIL
 }

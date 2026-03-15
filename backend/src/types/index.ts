@@ -3,6 +3,7 @@
  */
 
 // Zgodnie z constants.ts
+import { RiskCategory, TestResult, ProcessStatus } from '../config/constants';
 export * from '../config/constants';
 
 // Typy danych wejściowych/wyjściowych API
